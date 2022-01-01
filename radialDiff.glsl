@@ -179,7 +179,7 @@ float rayShad(vec3 r, vec3 rd){
 
 float getLighting(vec3 p){
     vec3 norm = calcNorm(p);
-    vec3 lighting = vec3(0,0,-1);
+    vec3 lighting = vec3(-1,5,-3);
     vec3 lightPert = lighting;
     int rep = 0;
     for (int i =0; i < rep;i++){
@@ -255,8 +255,8 @@ void main(void)
         // convert to polar coords
         float w = 1*atan(uv.y,uv.x);
         float R = 1*length(uv);
-        float dw = (diff.y*uv.x - diff.x*uv.y)/pow(R,2);
-        float dR = (diff.y*uv.y + diff.x*uv.x)/R;
+        float dw = (diff.y*uv.x - diff.x*uv.y)/pow(R+.1,2);
+        float dR = (diff.y*uv.y + diff.x*uv.x)/(R+.1);
         
         vec4 newFr = prevFr;
         // delta time
