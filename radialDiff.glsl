@@ -187,7 +187,7 @@ float getLighting(vec3 p){
         lightPert.y += lightPert.y+1*rand(p.xy*time+rand(p.xy*time))/30;
         lightPert.z += lightPert.z+1*rand(p.xy*time+rand(vec2(p.x)*time))/30;
     }
-    vec3 diffusing = normalize((lightPert-p));
+    vec3 diffusing = normalize((lightPert-norm));
     float sdc = rayShad(p,diffusing);    
     float d = sdc;
     float diffInt = 1*max(0*0.01*rand(time+vec2(p.x,p.y)),1*dot(norm,diffusing));    
