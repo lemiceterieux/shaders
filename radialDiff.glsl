@@ -61,6 +61,7 @@ sdCol sdGround(vec3 p){
     vec3 sdd = vec3(cos((-(p.x))),(cos(1*(p.y))),((exp(-p.z))));
     sdG.sd = 2*(sdd.x + sdd.y + sdd.z);
     sdG.col = vec3(1*sin(p.x)*sin(time)+1.1,sin(time)*(p.y)+1.1,exp(-p.z));
+    sdG.sd += sin(5*p.x)*cos(5*p.y)+sin(5*p.z);
     return sdG;
 }
 
@@ -210,7 +211,7 @@ void main(void)
         vec3 rf = normalize(-(cam - vec3(uv,1)));
         vec3 rr = normalize(cross(vec3(0,1,0), rf));
         vec3 ru = normalize(cross(rf,rr));
-        float fov = 1;
+        float fov = 1.1+sin(time)*cos(time);
 
         vec3 rd = normalize((uv.x+sin(time))*rr+(uv.y+cos(time))*ru+rf *fov);
 
@@ -296,7 +297,7 @@ void main(void)
         newFr.z += hdwdbw;
         newFr.z += hdRdbR;
                        
-        bool diffuse = false;
+        bool diffuse = true;
         bool new = false;
         if(diffuse && !new){
             fragColor /= 10;
