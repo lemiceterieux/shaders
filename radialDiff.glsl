@@ -197,7 +197,7 @@ float getLighting(vec3 p){
 void main(void)
 {
     bool initialize= true;
-    vec2 uv = gl_FragCoord.xy/resolution*1 - .5;     
+    vec2 uv = 2*(gl_FragCoord.xy/resolution*1 - .5);
     vec3 prevFr = texture(prevFrame,uv+.5).rgb;
     float off = 0;
     int reps = 4;
@@ -207,8 +207,13 @@ void main(void)
         vec3 cam2 = vec3(0.1*sin((time-.5) - 12*PI),0.1*cos(1*(time-.5))+.01,0.1);
         vec3 dcam = cam - cam2;
         uv -= off;
-        vec3 rd = vec3(uv,0.1);
-        
+        vec3 rf = normalize(-(cam - vec3(uv,1)));
+        vec3 rr = normalize(cross(vec3(0,1,0), rf));
+        vec3 ru = normalize(cross(rf,rr));
+        float fov = 1;
+
+        vec3 rd = normalize((uv.x+sin(time))*rr+(uv.y+cos(time))*ru+rf *fov);
+
         float R = 20*length(uv);
         float theta = atan(uv.y,uv.x);
         float fill = mod(log(R)*(cos(time)+1) + (theta)/(2*3.14)*2+time,.4);
@@ -229,17 +234,16 @@ void main(void)
         if (tempSph.sd != 0){
             scene = vec4(1*(lighting*tempSph.col),1);
         }else{
-            scene =vec4(0);
+            scene =.1*vec4(back,1);
         }        
-        if(tempSph.sd == 0){
-            fragColor = .1*vec4(back,1)+.0*rand(uv + time);
-        }else{
-            fragColor = scene;
-        }
+        scene.x = pow(scene.x,1/2.2);
+        scene.y = pow(scene.y,1/2.2);
+        scene.z = pow(scene.z,1/2.2);
+        fragColor = scene;
         //fragColor += prevFr*.1;
     }if(true){//int(time)%reps == 0 || int(time)%reps == 1){
         vec2 duv = vec2(.01,.01);//*sin(time); 
-        vec2 offset = uv + .5 + off;
+        vec2 offset = (uv + 1)/2 + off;
         vec4 prevFr = texture(prevFrame, offset); 
         vec3 diff = vec3(0);
         vec3 diff2 = vec3(0);
