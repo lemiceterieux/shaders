@@ -1,5 +1,5 @@
 #pragma once
-
+#include <random>
 #include "ofMain.h"
 
 class ofApp : public ofBaseApp{
@@ -23,5 +23,21 @@ class ofApp : public ofBaseApp{
         ofFbo fbo2;
         bool pass = false;
         bool diffuse = false;
+        bool stop = false;
+        bool mouseClick = false;
         float h = 0.01;
+        glm::vec3 camPos;
+        glm::vec3 mcamPos;
+        glm::vec3 scamPos;
+        glm::vec2 mosPos;
+        glm::vec3 hiscamPos[256];
+        uint32_t iters=0;
+        std::default_random_engine generator;
+        std::normal_distribution<double> distribution{0.0,1.0};
+        ofVideoGrabber vidGrabber;
+        ofFbo camfbo;
+        ofPixels videoInverted;
+        ofTexture videoTexture;
+        int camWidth;
+        int camHeight;
 };

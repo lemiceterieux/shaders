@@ -7,12 +7,17 @@ uniform float h;
 uniform vec2 resolution;
 uniform vec2 mouse;
 uniform int diffuse;
+uniform int stop;
+uniform vec3 heat;
+uniform vec3 camPos;
+uniform vec3 mcamPos;
+uniform vec3 scamPos;
 
 uniform sampler2D texture0;
 uniform sampler2D texture1;
 uniform sampler2D texture2;
 uniform sampler2D texture3;
-uniform sampler2D texture4;
+uniform sampler2D video;
 uniform sampler2D prevFrame;
 uniform sampler2D prevPass;
 
@@ -57,9 +62,9 @@ sdCol sdGround(vec3 p){
     // Mirror over x and y dimensions
     // Threshold on Z dimension
     vec3 sdd = vec3(cos(((p.x))),(p.y),(((-.01*p.z))));
-    sdG.sd = (sdd.x + sdd.y + sdd.z) +  .5*sin(2.0 * p.x)*cos(3*p.x) + 0*cos(p.z)*sin(p.y);//(atan(p.y-1,p.x));    
+    sdG.sd = (sdd.y)*0.5+(sdd.x + sdd.z) +  .5*sin(2.0 * p.x)*cos(3*p.x) + 0*cos(p.z);//(atan(p.y-1,p.x));    
     //sdG.sd += sin(5*p.x)*sin(5*p.y)-sin(p.z);
-    sdG.col = vec3(1*sin(p.x)*sin(time)+1.1,sin(time)*(p.y)+1.1,exp(-p.z));//sin(time)*cos(p.x),0.01*cos(p.y),exp(-20*p.y));//3*sin(p.x)*cos(time),0.1*cos(p.y)*sin(3*time),cos(sin(p.z))*cos(time-100));
+    sdG.col = vec3(1*sin(p.x)*+1.1,(p.y)+1.1,exp(-p.z));//sin(time)*cos(p.x),0.01*cos(p.y),exp(-20*p.y));//3*sin(p.x)*cos(time),0.1*cos(p.y)*sin(3*time),cos(sin(p.z))*cos(time-100));
     return sdG;
 }
 
@@ -81,11 +86,14 @@ sdCol sdRectPrism(vec3 p, vec3 cent, vec3 dim, vec3 col){
     return sdS;
 }
 
-sdCol sdBoat(vec3 p, vec3 cent){
+sdCol sdTor(vec3 p, vec3 cent, float R1, float R2, vec3 col){
 //    vec3 q = p - clamp(p,vec3(p,p.x-1,0,p.z-1),vec3(p.x+1,0,pz+1));
-    sdCol sphOr = sdSpheres(p, cent, .1, vec3(1,0,0));
-    
-    return sphOr;
+    sdCol tor;
+    vec3 center = p - cent;
+    vec2 q = vec2(length(center.xy) - R1, center.z);
+    tor.sd = length(q) - R2;
+    tor.col = col;
+    return tor;
 }
 
 sdCol minWithCol(sdCol obj1, sdCol obj2){
@@ -111,10 +119,13 @@ sdCol mapofWorld(vec3 p){
     float phi = atan(length(p.xy),p.z);
     float rad1 = .3;// + Rp*sin(5*theta)*sin(5.0*phi)*0.1;
     float rad2 = .2;// + Rp*sin(5*theta)*sin(5.0*phi)*0.25;;// +sin(phi*2)*sin(2*theta)*.25;//+.1*(cos(3*phi*theta*Rp)+.2); 
-    sdCol Sphere1 = sdSpheres(p, pos, rad1, 4*vec3(1*p.z,2*p.y,0.1*cos(p.x)));    
+    vec3 colsph1 = 4*vec3(1*p.z,2*p.y,0.1*cos(p.x));
+    sdCol Sphere1 = sdSpheres(p, pos, rad1, colsph1);    
     sdCol Sphere2 = sdSpheres(p, pos2, rad2, 3*vec3(cos(time)*cos(sin(p.z))*.1,.4*sin(p.z),cos(0)));
+    sdCol tor = sdTor(p, pos, .4*rad1, .1*rad1, colsph1);
+    tor.sd += 0;
     sdCol Rect = sdRectPrism(p, pos2, vec3(.1), 3*vec3(0*cos(time)*cos(sin(p.z))*.1,0*.4*sin(p.z),cos(time)));    
-    sdCol tempCol = minWithCol(Sphere1,Sphere2);
+    sdCol tempCol = minWithCol(tor,Sphere2);
     //tempCol = minWithCol(tempCol, Rect);
     /*sdCol ground;
     ground.sd = p.y/1+1;
@@ -142,7 +153,7 @@ sdCol ray(vec3 r, vec3 rd){
     float dO = 0;
     float tol =1e-1;    
     sdCol dist;
-    dist.sd = 0;
+    dist.sd = -1;
     dist.col = vec3(0);
     float stepUp = 0;
     for (int i = 0; i < 32; i++){
@@ -157,11 +168,12 @@ sdCol ray(vec3 r, vec3 rd){
             return dist;//ro +dist.col;
         }
         if (dO >= 1e10){
-            dist.sd = dO;
+            dist.sd = -1;
+            break;
         }
     }
-    sdCol zero;
 
+    dist.sd = -1;
     return dist;//back/10;
 }
 
@@ -203,7 +215,7 @@ float getLighting(vec3 p, vec2 uv){
         vec3 diff = normalize((uv.x+sin(PI/2)) * rr + (uv.y+cos(0)) * ru + diffusing*fov);
         float sdc = rayShad(p+norm,diff);    
         float d = sdc;
-        diffInt += 1*(d+.05)*max(0,dot(norm,diff));
+        diffInt += 1*(d)*max(0,dot(norm,diff));
     }
     return 1*diffInt/lights;
 }
@@ -234,12 +246,12 @@ void main(void)
 {    
     vec2 uv = 2*(gl_FragCoord.xy/resolution*1 - .5);     
 
-    float off = 0;//(sin(time)*((uv.y))) + (sin(time)*sin(uv.x));
+    float off = (sin(time)*tanh(length(camPos.xy))*((uv.y))) + (sin(time)*sin(uv.x));
     int reps = 4;
     fragColor = vec4(vec3(0),1);
-    vec3 cam = vec3(0,0,.1);//0.1*sin(time - 12*PI),0.1*cos(1*time)+.05,0.1);//0.25*sin((0*time)),0.05*sin(0*time),0.01*cos(sin(2*time)));
-    vec3 cam2 = vec3(0.1*sin((time-.5) - 12*PI),0.1*cos(1*(time-.5))+.01,0);//0.25*sin((0*time)),0.05*sin(0*time),0.01*cos(sin(2*time)));
-    vec3 dcam = cam - cam2;
+    vec3 cam = 1/scamPos*(camPos - mcamPos)+vec3(0,0,.1);//0.1*sin(time - 12*PI),0.1*cos(1*time)+.05,0.1);//0.25*sin((0*time)),0.05*sin(0*time),0.01*cos(sin(2*time)));
+//    vec3 cam2 = vec3(0.1*sin((time-.5) - 12*PI),0.1*cos(1*(time-.5))+.01,0);//0.25*sin((0*time)),0.05*sin(0*time),0.01*cos(sin(2*time)));
+//    vec3 dcam = cam - cam2;
     uv -= off;//sin(tanh(uv.y))*sin(time*2) + tanh(sin(time)*(uv.x));
     uv *= vec2(1,-1);
     vec3 rd = normalize(-(cam - vec3(uv,1)));//*sin(time));
@@ -247,7 +259,7 @@ void main(void)
     vec3 ru = normalize(cross(rd,rr));
     float fPersp = 1;
 
-    rd = normalize((uv.x+sin(time)) * rr + (uv.y+cos(time)) * ru + rd * fPersp);        
+    rd = normalize((uv.x)*rr + (uv.y)*ru + rd*fPersp);        
     float R = 1*length(uv);
     float theta = atan(uv.y,uv.x);
     float fill = exp(-5*mod(log(R)*(cos(time)+1) + (theta)/(2*3.14)*2+time,.4));
@@ -258,13 +270,13 @@ void main(void)
     float lighting = getLighting(shad, uv);
 
     // blurs
-    vec2 offset = uv + .5 + off; 
-    vec4 prevFr = texture(prevFrame, offset+dcam.xy);
+    vec2 offset = uv + 1 + off; 
+//    vec4 prevFr = texture(prevFrame, offset+dcam.xy);
 
 
     vec4 scene;
-    vec4 tex4 = texture(texture4,(uv.xy*vec2(1,-1)+.8)/2);
-    if (tempSph.sd != 0){
+    vec4 tex4 = texture(video,(uv*vec2(1,-1)+1)/2);// + 1 + off));
+    if (tempSph.sd != -1){
         scene = vec4(tempSph.col*lighting,1)*1;
     }else{
         scene = vec4(back*rd.y*.6*vec3(tan(cos(time)),sin(time),cos(time)),1);        
@@ -274,8 +286,11 @@ void main(void)
     scene.x = pow(scene.x,1/2.2);
     scene.y = pow(scene.y,1/2.2);
     scene.z = pow(scene.z,1/2.2);
-    fragColor = scene;
-    fragColor += tex4*.0;
+    if (length(tex4.xyz) > .9){
+        fragColor = scene;
+    }else{
+        fragColor = tex4;//200;
+    }
     if(true){//int(time)%reps == 0 || int(time)%reps == 1){
         vec2 duv = vec2(.1,.1);//*sin(time); 
         uv *= vec2(1,-1);
@@ -315,14 +330,15 @@ void main(void)
         
         float dbdw = (0)*(.4*prevFr.x+-.01*prevFr.y+0.01*prevFr.z);
         float dbdR = (0)*(.2*prevFr.x-.1*prevFr.y+.003*prevFr.z);
-        float hdwdrw = h*dw*(drdw - (mod(w,2*PI) - PI/2)/4);
-        float hdRdrR = h*dR*(drdR -( R - 7)/4);
-        
-        float hdwdgw = h*dw*(dgdw - (mod(w,2*PI) - PI/6)/4);
-        float hdRdgR = h*dR*(dgdR - (R - 3)/4);
 
-        float hdwdbw = h*dw*(dbdw - (mod(w,2*PI) - 2*PI)/4);
-        float hdRdbR = h*dR*(dbdR - (R - 5)/4);
+        float hdwdrw = h*dw*(2*heat.x+drdw - (mod(w,2*PI) - PI/2)/4);
+        float hdRdrR = h*dR*(2*heat.x+drdR -( R - 7)/4);
+        
+        float hdwdgw = h*dw*(2*heat.y+dgdw - (mod(w,2*PI) - PI/6)/4);
+        float hdRdgR = h*dR*(2*heat.y+dgdR - (R - 3)/4);
+
+        float hdwdbw = h*dw*(2*heat.z+dbdw - (mod(w,2*PI) - 2*PI)/4);
+        float hdRdbR = h*dR*(2*heat.z+dbdR - (R - 5)/4);
                 
         newFr.x += hdwdrw;
         newFr.x += hdRdrR;
@@ -335,12 +351,11 @@ void main(void)
         prevFr = newFr;
         }
 //        bool diffuse = true;
-        bool new = false;
-        if(diffuse==1 && !new){
+        if(diffuse==1 && stop == 0){
             fragColor /= 10;
             fragColor += (newFr*.97);
         }
-        if(diffuse==1 && new){
+        if(diffuse==1 && stop==1){
             fragColor = (newFr);
         }
     }
